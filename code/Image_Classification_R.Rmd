@@ -1,5 +1,5 @@
 ---
-title: "Assignment_5_Introduction_to_Machine_Learning"
+title: "ML Image Classification"
 output: pdf_document
 date: "2025-07-14"
 ---
