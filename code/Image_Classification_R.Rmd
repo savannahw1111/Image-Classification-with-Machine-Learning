@@ -1,0 +1,179 @@
+---
+title: "Assignment_5_Introduction_to_Machine_Learning"
+output: pdf_document
+date: "2025-07-14"
+---
+
+```{r}
+#loading packages
+library(caret)
+library(ggplot2)
+library(AppliedPredictiveModeling)
+
+#loading dataset
+data(segmentationOriginal)
+data <- segmentationOriginal
+
+#viewing
+head(data)
+
+#observing
+dim(data)
+
+#factoring 
+factor(levels(data$Class))
+
+#Looks like there is no missing data
+length(which(is.na(data) == TRUE))
+
+```
+
+```{r}
+#set seed 
+set.seed(1234)
+
+#splitting our data in 1/2
+trainIndex <- createDataPartition(data$Class, p = 1/2, list = FALSE, times = 1)
+
+#assign the 1/2 of data to a training set variable
+train <- data[ trainIndex,]
+
+#we assign the remaining 1/2 of data to a testing
+test <- data[-trainIndex,]
+
+#dimension check
+dim(train)
+dim(test)
+```
+
+
+```{r}
+#repeated k-fold cross validation
+model_check <- trainControl(method = "repeatedcv", number = 3,repeats = 5)
+
+#set seed 
+set.seed(555) 
+
+#model fitting as fit
+fit <- train(Class ~ ., data = train, method = "rf", trControl = model_check, verbose = FALSE)
+
+fit
+```
+
+
+```{r}
+#select the most important variables
+imp <- varImp(fit, scale = FALSE)
+
+
+#make a plot of which variables are the most important
+plot(imp, top = 20)
+
+#select the top 10 most important
+top10 <- rownames(imp$importance)[order(imp$importance$Overall, decreasing = TRUE)][1:10]
+
+#viewing
+top10
+
+#making the subset for the top 10 and class
+train_top10 <- train[, c(top10, "Class")]
+test_top10 <- test[, c(top10, "Class")]
+
+#setting seed just in case
+set.seed(998)
+
+#Same model as before but with top 10
+fit_top10 <- train(Class ~ ., data = train_top10, method = "rf", trControl = model_check, verbose = FALSE)
+
+fit_top10
+```
+
+
+```{r}
+
+#loading libraries
+library(scales)
+library(ggplot2)
+
+#making confusion matrix
+preds<-predict(fit_top10, newdata = test_top10)
+matrix1 <- confusionMatrix(preds,test_top10$Class,positive="PS")
+
+#viewing content of matrix
+matrix1$overall[1]
+
+#titling 
+mytitle <- paste("RF Model/Feature Selection Confusion Matrix - Accuracy:", percent_format() (matrix1$overall[1]))
+
+#making ggplot and chnaging data to data frame
+  p <-
+    ggplot(data = as.data.frame(matrix1$table),aes(x = Reference, y = Prediction)) +
+    geom_tile(aes(fill = log(Freq)), colour = "white") +
+    scale_fill_gradient(low = "white", high = "steelblue") +
+    geom_text(aes(x = Reference, y = Prediction, label = Freq)) +
+    theme(legend.position = "none") +
+   labs(
+  title = mytitle,
+  x = "Reference",
+  y = "Predicted"
+) 
+#device open
+png("confusion-matrix.png")
+
+#printing
+print(p)
+
+#closing
+dev.off()
+```
+
+
+```{r}
+library(pROC)
+library(kernlab)
+#k-fold cross validation
+model_check2 <- trainControl(method = "cv", number = 3, classProbs = TRUE,summaryFunction = twoClassSummary)
+
+#set seed 
+set.seed(780) 
+
+#model fitting as Fit
+fit_svm <- train(Class ~ ., data = train, method = "svmRadial", preProcess =  c("center", "scale"), metric = "ROC", trControl = model_check2, verbose = FALSE)
+
+fit_svm
+```
+
+
+```{r}
+#making confusion matrix
+preds2 <-predict(fit_svm, newdata = test)
+matrix2 <- confusionMatrix(preds2,test$Class,positive="PS")
+
+#viewing content of matrix
+matrix2$overall[1]
+
+#titling 
+mytitle2 <- paste("SVM Model Confusion Matrix - Accuracy:", percent_format() (matrix2$overall[1]))
+
+#making ggplot and chnaging data to data frame
+  p2 <-
+    ggplot(data = as.data.frame(matrix2$table),aes(x = Reference, y = Prediction)) +
+    geom_tile(aes(fill = log(Freq)), colour = "white") +
+    scale_fill_gradient(low = "white", high = "steelblue") +
+    geom_text(aes(x = Reference, y = Prediction, label = Freq)) +
+    theme(legend.position = "none") +
+   labs(
+  title = mytitle2,
+  x = "Reference",
+  y = "Predicted"
+) 
+#device open
+png("confusion-matrix2.png")
+
+#printing
+print(p2)
+
+#closing
+dev.off()
+```
+
